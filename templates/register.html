@@ -1,15 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card">
-    <h2>Create Account</h2>
-    <form method="POST">
-        <label>Username</label>
-        <input name="username" placeholder="e.g. jeremy" required>
 
-        <label>Password</label>
-        <input name="password" type="password" placeholder="Create a password" required>
+<h1>Create Account</h1>
 
-        <button type="submit">Register</button>
-    </form>
-</div>
+{% if message %}
+  <div class="alert">{{ message }}</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('register') }}">
+  <label for="username">Username</label>
+  <input
+    type="text"
+    id="username"
+    name="username"
+    placeholder="e.g. jeremy"
+    required
+  />
+
+  <label for="password">Password</label>
+  <input
+    type="password"
+    id="password"
+    name="password"
+    placeholder="Create a password"
+    required
+  />
+
+  <button type="submit">Register</button>
+</form>
+
 {% endblock %}
