@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h1 style="margin-bottom:10px;">{{ post['title'] }}</h1>
+  <p style="white-space:pre-wrap; font-size: 1.05rem;">{{ post['content'] }}</p>
+  <hr style="margin:16px 0; opacity:0.2;">
+  <small>By {{ post['username'] }} • {{ post['created_at'] }}</small>
+</div>
+
+{% endblock %}

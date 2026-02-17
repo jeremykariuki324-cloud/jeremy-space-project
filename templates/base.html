@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ site_name }}</title>
+    <style>
+        body { background:#0b1020; color:white; font-family:Arial,sans-serif; padding:40px; }
+        .wrap { max-width:900px; margin:0 auto; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+        a { color:#9bbcff; text-decoration:none; }
+        a:hover { text-decoration:underline; }
+        .card { background:#121a33; padding:22px; border-radius:12px; border:1px solid #2b355a; margin-bottom:16px; }
+        input, textarea { width:100%; padding:10px; margin-top:8px; margin-bottom:12px; border-radius:8px; border:1px solid #2b355a; background:#0f1630; color:white; }
+        button { padding:10px 14px; border-radius:10px; border:1px solid #2b355a; background:#1b2a57; color:white; cursor:pointer; }
+        button:hover { filter:brightness(1.1); }
+        .flash { background:#2a1b1b; border:1px solid #6a2b2b; padding:10px; border-radius:10px; margin-bottom:12px; }
+        small { color:#b9c2e3; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div><strong>🚀 {{ site_name }}</strong></div>
+        <div>
+            <a href="/">Home</a>
+            {% if session.get("user_id") %}
+                &nbsp;|&nbsp; <a href="/dashboard">Dashboard</a>
+                &nbsp;|&nbsp; <a href="/logout">Logout ({{ session.get("username") }})</a>
+            {% else %}
+                &nbsp;|&nbsp; <a href="/register">Register</a>
+                &nbsp;|&nbsp; <a href="/login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for m in messages %}
+          <div class="flash">{{ m }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>
