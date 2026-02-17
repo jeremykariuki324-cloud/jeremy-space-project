@@ -1,231 +1,157 @@
 import os
 import sqlite3
-from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 
-from flask import (
-    Flask, render_template, request, redirect,
-    url_for, session, flash
-)
-from werkzeug.security import generate_password_hash, check_password_hash
-
-
-# -----------------------------
-# APP CONFIG
-# -----------------------------
 app = Flask(__name__)
-app.secret_key = "change-this-to-a-long-random-secret"  # change later for production
+app.secret_key = "supersecretkey"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "site.db")
-SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
+DATABASE = "site.db"
 
 
-# -----------------------------
-# DB HELPERS
-# -----------------------------
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
+# --------------------------
+# Database Connection
+# --------------------------
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 
+# --------------------------
+# Initialize Database
+# --------------------------
 def init_db():
-    """
-    Creates the database tables using schema.sql.
-    Safe to run multiple times if schema uses IF NOT EXISTS.
-    """
-    if not os.path.exists(SCHEMA_PATH):
-        raise FileNotFoundError(f"schema.sql not found at: {SCHEMA_PATH}")
-
-    db = get_db()
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-        db.executescript(f.read())
-    db.commit()
-    db.close()
-    return True
+    conn = get_db_connection()
+    with open("schema.sql") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    conn.close()
 
 
-def login_required(fn):
-    """
-    Simple decorator to protect routes.
-    """
-    from functools import wraps
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please login first.", "warning")
-            return redirect(url_for("login"))
-        return fn(*args, **kwargs)
-
-    return wrapper
-
-
-# -----------------------------
-# ROUTES
-# -----------------------------
+# --------------------------
+# Home
+# --------------------------
 @app.route("/")
-def home():
+def index():
     return render_template("index.html")
 
 
-# ---------- AUTH ----------
+# --------------------------
+# Register
+# --------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        username = request.form["username"]
+        password = request.form["password"]
 
-        if not username or not password:
-            flash("Username and password are required.", "danger")
-            return redirect(url_for("register"))
-
-        db = get_db()
-
-        # check username exists
-        existing = db.execute(
-            "SELECT id FROM users WHERE username = ?",
-            (username,)
-        ).fetchone()
-
-        if existing:
-            db.close()
-            flash("Username already exists. Please choose another.", "warning")
-            return redirect(url_for("register"))
-
-        pw_hash = generate_password_hash(password)
-
-        db.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, pw_hash)
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (username, password),
         )
-        db.commit()
-        db.close()
+        conn.commit()
+        conn.close()
 
-        flash("Account created successfully. Please login.", "success")
+        flash("Registration successful. Please login.")
         return redirect(url_for("login"))
 
     return render_template("register.html")
 
 
+# --------------------------
+# Login
+# --------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        username = request.form["username"]
+        password = request.form["password"]
 
-        db = get_db()
-        user = db.execute(
-            "SELECT id, username, password_hash FROM users WHERE username = ?",
-            (username,)
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ? AND password = ?",
+            (username, password),
         ).fetchone()
-        db.close()
+        conn.close()
 
-        if user and check_password_hash(user["password_hash"], password):
+        if user:
             session["user_id"] = user["id"]
             session["username"] = user["username"]
-            flash("Logged in successfully.", "success")
+            flash("Logged in successfully.")
             return redirect(url_for("dashboard"))
-
-        flash("Invalid username or password.", "danger")
-        return redirect(url_for("login"))
+        else:
+            flash("Invalid credentials.")
 
     return render_template("login.html")
 
 
+# --------------------------
+# Logout
+# --------------------------
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("You have been logged out.", "info")
-    return redirect(url_for("home"))
+    return redirect(url_for("index"))
 
 
-# ---------- DASHBOARD (POSTING) ----------
+# --------------------------
+# Dashboard
+# --------------------------
 @app.route("/dashboard", methods=["GET", "POST"])
-@login_required
 def dashboard():
-    db = get_db()
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
 
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        content = request.form.get("content", "").strip()
+        title = request.form["title"]
+        content = request.form["content"]
 
-        if not title or not content:
-            flash("Title and content are required.", "danger")
-            return redirect(url_for("dashboard"))
-
-        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        db.execute(
-            "INSERT INTO posts (title, content, created_at, user_id) VALUES (?, ?, ?, ?)",
-            (title, content, created_at, session["user_id"])
+        conn.execute(
+            "INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)",
+            (title, content, session["user_id"]),
         )
-        db.commit()
-        flash("Post published!", "success")
-        return redirect(url_for("dashboard"))
+        conn.commit()
 
-    # show user's posts on dashboard
-    my_posts = db.execute("""
-        SELECT posts.id, posts.title, posts.content, posts.created_at, users.username
+    posts = conn.execute(
+        """
+        SELECT posts.*, users.username
         FROM posts
         JOIN users ON posts.user_id = users.id
-        WHERE users.id = ?
-        ORDER BY posts.id DESC
-    """, (session["user_id"],)).fetchall()
+        ORDER BY posts.created_at DESC
+        """
+    ).fetchall()
 
-    db.close()
-    return render_template("dashboard.html", posts=my_posts)
+    conn.close()
 
-
-# ---------- PUBLIC POSTS ----------
-@app.route("/posts")
-def posts():
-    db = get_db()
-    rows = db.execute("""
-        SELECT posts.id, posts.title, posts.content, posts.created_at, users.username
-        FROM posts
-        JOIN users ON posts.user_id = users.id
-        ORDER BY posts.id DESC
-    """).fetchall()
-    db.close()
-    return render_template("posts.html", posts=rows)
+    return render_template("dashboard.html", posts=posts)
 
 
+# --------------------------
+# View Single Post
+# --------------------------
 @app.route("/post/<int:post_id>")
-def view_post(post_id):
-    db = get_db()
-    row = db.execute("""
-        SELECT posts.id, posts.title, posts.content, posts.created_at, users.username
+def post(post_id):
+    conn = get_db_connection()
+    post = conn.execute(
+        """
+        SELECT posts.*, users.username
         FROM posts
         JOIN users ON posts.user_id = users.id
         WHERE posts.id = ?
-    """, (post_id,)).fetchone()
-    db.close()
+        """,
+        (post_id,),
+    ).fetchone()
+    conn.close()
 
-    if row is None:
-        return "Post not found", 404
-
-    return render_template("post.html", post=row)
-
-
-# ---------- DB INIT COMMAND ----------
-@app.route("/init-db")
-def init_db_route():
-    """
-    Optional: open this once in browser to initialize db.
-    Safer to run init from terminal, but this helps beginners.
-    """
-    try:
-        init_db()
-        return "Database initialized successfully ✅"
-    except Exception as e:
-        return f"DB init failed: {e}", 500
+    return render_template("post.html", post=post)
 
 
-# -----------------------------
-# RUN APP
-# -----------------------------
+# --------------------------
+# REQUIRED FOR RENDER
+# --------------------------
 if __name__ == "__main__":
-    # NOTE: You can comment this out if you prefer manual init_db()
-    # init_db()
-
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
