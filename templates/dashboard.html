@@ -1,15 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Jeremy Space Project{% endblock %}</title>
+
+  <style>
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: white;
+      background: url("{{ url_for('static', filename='images/saturn.jpg') }}") no-repeat center center fixed;
+      background-size: cover;
+    }
+    .overlay{
+      min-height: 100vh;
+      background: rgba(0,0,0,0.55);
+      padding: 30px 18px;
+      box-sizing: border-box;
+    }
+    .brand{
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .brand small{
+      display:block;
+      font-size: 14px;
+      font-weight: 400;
+      opacity: 0.9;
+      margin-top: 6px;
+    }
+    .container{
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .title{ margin: 10px 0 6px; }
+    .subtitle{ margin: 0 0 16px; opacity: 0.95; }
+    .link{ color: #fff; text-decoration: underline; }
+    .divider{ border: 0; border-top: 1px solid rgba(255,255,255,0.2); margin: 18px 0; }
+
+    .form{ display:flex; flex-direction:column; gap:10px; max-width: 700px; }
+    .input, .textarea{
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      outline: none;
+    }
+    .textarea{ min-height: 120px; resize: vertical; }
+
+    .btn{
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .card{
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .card-title{ margin:0 0 6px; }
+    .card-meta{ margin:0 0 10px; opacity: 0.85; font-size: 13px; }
+    .card-body{ margin:0; line-height: 1.5; }
+  </style>
 </head>
+
 <body>
+  <div class="overlay">
+    <div class="container">
+      <div class="brand">
+        JEREMY KARIUKI
+        <small>Space Project • Saturn Theme</small>
+      </div>
 
-  <h2>Dashboard</h2>
-  <p>You are logged in.</p>
-
-  <a href="/logout">Logout</a>
-
+      {% block content %}{% endblock %}
+    </div>
+  </div>
 </body>
 </html>
